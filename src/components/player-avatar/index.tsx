@@ -8,7 +8,6 @@ const PlayerAvatar = ({
   color,
 }: {
   player: any;
-  playerNumber: number;
   symbol?: string;
   color?: string;
 }) => {

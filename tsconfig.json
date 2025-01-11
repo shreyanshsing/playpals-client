@@ -15,10 +15,9 @@
     "noUnusedParameters": true,
     "jsx": "react",
     "jsxFactory": "React.createElement",
+    "esModuleInterop": true,
   },
-  "include": [
-    "src"
-  ],
+  "include": [ "./" ],
   "exclude": [
     "node_modules"
   ]

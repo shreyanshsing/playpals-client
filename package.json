@@ -1,5 +1,5 @@
 {
-  "name": "client-v2",
+  "name": "client",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -42,6 +42,7 @@
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",
+    "@types/cors": "^2.8.17",
     "@types/react-dom": "^19.0.2",
     "@types/redux-persist": "^4.0.0",
     "@types/testing-library__react": "^10.0.1"

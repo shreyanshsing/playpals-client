@@ -15,7 +15,7 @@ const GameList = () => {
   const dispatch: AppDispatch = useDispatch();
   const { games } = useSelector(selectGameList);
   const [gameServerId, setGameServerId] = useState("");
-  const [loading, setLoading] = useState(undefined);
+  const [loading, setLoading] = useState<any>(undefined);
   const [error, setError] = useState("");
   const [gameId, setGameId] = useState("");
 

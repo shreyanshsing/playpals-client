@@ -8,7 +8,7 @@ const useWebSocket = ({ callback, clientId }: { callback?: (data: any) => void, 
 
   const connect = () => {
     if (!ws.current || ws.current.readyState === WebSocket.CLOSED) {
-      ws.current = new WebSocket(webSocketBaseUrl);
+      ws.current = new WebSocket(webSocketBaseUrl!);
       ws.current.onopen = () => {
         console.log("WebSocket connected");
         setConnected(true);
