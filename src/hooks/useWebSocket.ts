@@ -1,61 +1,69 @@
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { webSocketBaseUrl } from "../config/data";
+import { io } from "socket.io-client";
+import { WebSocketMessageType } from "../utils/enum";
 
-const useWebSocket = ({ callback, clientId }: { callback?: (data: any) => void, clientId: string }) => {
-  const ws = useRef<WebSocket | null>(null);
-  const intervalRef = useRef<any>(null);
-  const [connected, setConnected] = useState(false);
+const useWebSocket = ({
+  clientId,
+  handleTimer,
+  handleGridMarked,
+  handleLiveGame,
+  handleGameOver,
+}: {
+  callback?: (data: any) => void;
+  clientId: string;
+  handleTimer: () => void;
+  handleGridMarked: (data: any) => void;
+  handleLiveGame: (data: any) => void;
+  handleGameOver: (data: any) => void;
+}) => {
+  const clientIdRef = useRef(clientId);
+  const socketRef = useRef(io(webSocketBaseUrl, { autoConnect: false })); // Use autoConnect: false for better control
+  const [isConnected, setIsConnected] = useState(false);
 
-  const connect = () => {
-    if (!ws.current || ws.current.readyState === WebSocket.CLOSED) {
-      ws.current = new WebSocket(webSocketBaseUrl!);
-      ws.current.onopen = () => {
-        console.log("WebSocket connected");
-        setConnected(true);
-        sendMessage(JSON.stringify({ clientId }));
-      }
-      ws.current.onmessage = (message) => {
-        console.log("Received:", message.data);
-        if (callback) {
-          callback(JSON.parse(message.data));
-        }
-      };
-      ws.current.onclose = () => {
-        console.log("WebSocket disconnected");
-        setConnected(false);
-      };
-      ws.current.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        setConnected(false);
-      }
-    }
+  const sendMessage = (type: WebSocketMessageType, message: any) => {
+    socketRef.current.emit(type, message);
   };
-
-  const disconnect = () => {
-    ws.current?.close();
-    ws.current = null;
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
-  };
-
-  const sendMessage = (message: string) => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(message);
-    } else {
-      console.warn("WebSocket is not open. Message not sent:", message);
-    }
-  };
-
 
   useEffect(() => {
-    connect();
-    return () => {
-      disconnect(); // Ensure cleanup on unmount
-      setConnected(false);
-    };
-  }, [callback]); // Dependency ensures `callback` updates properly
+    const socket = socketRef.current;
 
-  return { connect, disconnect, sendMessage, connected };
+    // Connect the socket
+    socket.connect();
+
+    // Handle connection event
+    const handleConnect = () => {
+      setIsConnected(true);
+      socket.emit(WebSocketMessageType.CONNECTED, {
+        clientId: clientIdRef.current,
+      });
+    };
+
+    // Handle disconnection event
+    const handleDisconnect = () => {
+      setIsConnected(false);
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+
+    return () => {
+      // Clean up listeners and disconnect the socket
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    socket.on(WebSocketMessageType.GAME_START, handleTimer);
+    socket.on(WebSocketMessageType.GRID_MARKED, handleGridMarked);
+    socket.on(WebSocketMessageType.GAME_LIVE, handleLiveGame);
+    socket.on(WebSocketMessageType.GAME_OVER, handleGameOver);
+  }, []);
+
+  return { isConnected, socket: socketRef.current, sendMessage };
 };
 
 export default useWebSocket;

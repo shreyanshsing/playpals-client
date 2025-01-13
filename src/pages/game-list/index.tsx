@@ -37,7 +37,6 @@ const GameList = () => {
       });
       setGameServerId(res.data.id);
     } catch (error: any) {
-      console.log(error);
       setError(error.message);
     } finally {
       setLoading(undefined);

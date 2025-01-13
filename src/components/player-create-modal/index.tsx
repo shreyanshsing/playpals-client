@@ -36,7 +36,6 @@ const PlayerCreateModal = ({
       callback?.(res.data);
       onClose();
     } catch (error: any) {
-      console.log(error);
       setError(error.message);
     } finally {
       setLoading(false);

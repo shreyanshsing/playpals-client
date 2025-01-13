@@ -13,7 +13,7 @@ export const handleLiveGameAction = (
   const player1 = { symbol: player1Symbol, color: player1Color };
   const player2 = { symbol: player2Symbol, color: player2Color };
 
-  grid.forEach((clientId: string, index: number) => {
+  grid?.forEach((clientId: string, index: number) => {
     if (clientId === player1Id) {
       grid[index] = player1;
     } else if (clientId === player2Id) {
@@ -26,6 +26,5 @@ export const handleLiveGameAction = (
     }
     return g;
   });
-  console.log("newGrid: ", newGrid);
   callback(newGrid);
 };

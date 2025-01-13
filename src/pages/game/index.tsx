@@ -19,6 +19,8 @@ import TicTacGrid from "../../components/tic-tac-grid";
 import CopyLinkButton from "../../components/copy-link-button";
 import { WebSocketMessageType } from "../../utils/enum";
 import { handleLiveGameAction } from "./webSocketActions";
+import GameOverModal from "../../components/game-over-modal";
+import GameStats from "../../components/game-stats";
 
 const Game = () => {
   const gameId = window.location.pathname.split("/")[2];
@@ -27,9 +29,13 @@ const Game = () => {
   const { game, server, player, loading } = useSelector(selectGame);
   const [openModal, setOpenModal] = useState(false);
   const [timer, setTimer] = useState(5);
+  const [gameOverDialog, setGameOverDialog] = useState(false);
+  const [isWon, setIsWon] = useState(false);
   const [gridSymbolAndColors, setGridSymbolAndColors] = useState(() =>
     Array(9).fill({ symbol: "", color: "" })
   );
+  const [winners, setWinners] = useState<string[]>([]);
+
   const timerRef = useRef<any>(null);
   const playerRef = useRef<any>(player);
   const gameSetRef = useRef<any>(null);
@@ -37,6 +43,16 @@ const Game = () => {
   useEffect(() => {
     playerRef.current = player;
   }, [player]);
+
+  useEffect(() => {
+    if (server?.winner?.length) {
+      const findNames = server?.players?.filter((p: any) =>
+        server?.winner?.includes(p.id)
+      );
+      const names = findNames.map((p: any) => p.name);
+      setWinners(names);
+    }
+  }, [server?.players, server?.winner]);
 
   useEffect(() => {
     return () => {
@@ -47,9 +63,9 @@ const Game = () => {
   }, []);
 
   const handleLiveGame = useCallback(
-    (grid: any) => {
+    (data: any) => {
       handleLiveGameAction(
-        grid,
+        data?.grid,
         gridSymbolAndColors,
         server?.players,
         setGridSymbolAndColors
@@ -82,19 +98,19 @@ const Game = () => {
     if (!playerRef.current || gridSymbolAndColors[index].symbol || !connected) {
       return;
     }
-    console.log("Marking index: ", index);
     const message = {
-      type: WebSocketMessageType.MARK_GRID,
       gameId: serverId,
       index,
       clientId: playerRef.current?.id,
     };
-    sendMessage(JSON.stringify(message));
-    updateGridByOpponent(index, playerRef.current?.id);
+    sendMessage(WebSocketMessageType.MARK_GRID, message);
+    updateGridByOpponent(message);
   };
 
   const updateGridByOpponent = useCallback(
-    (index: number, opponentId: string) => {
+    (data: any) => {
+      const index = data.index;
+      const opponentId = data.clientId;
       const opponent = server?.players?.find((p: any) => p.id === opponentId);
       const symbol = opponent?.symbol;
       const color = opponent?.color;
@@ -107,38 +123,30 @@ const Game = () => {
     [server?.players]
   );
 
-  const handleMessage = useCallback(
-    (data: any) => {
-      console.log("data: ", data);
-      const type = data.type;
-      if (type === WebSocketMessageType.GAME_START) {
-        handleTimer();
-      } else if (type === WebSocketMessageType.GRID_MARKED) {
-        const index = data.index;
-        updateGridByOpponent(index, data.clientId);
-      } else if (type === WebSocketMessageType.GAME_LIVE) {
-        handleLiveGame(data.grid);
-      }
-    },
-    [handleLiveGame, handleTimer, updateGridByOpponent]
-  );
+  const handleGameOver = useCallback((data: any) => {
+    // Handle win
+    const winnerId = data.winner;
+    const winner = server?.players?.find((p: any) => p.id === winnerId);
+    const isSelf = winner?.id === playerRef.current?.id;
+    setIsWon(isSelf);
+    setGameOverDialog(true);
+  }, [server?.players]);
 
-  const { sendMessage, connected } = useWebSocket({
-    callback: handleMessage,
+  const { isConnected: connected, sendMessage } = useWebSocket({
     clientId: playerRef.current?.id ?? player?.id,
+    handleTimer: handleTimer,
+    handleGridMarked: updateGridByOpponent,
+    handleLiveGame: handleLiveGame,
+    handleGameOver: handleGameOver,
   });
 
   const setGame = useCallback(() => {
     const message = {
-      type: WebSocketMessageType.SET_GAME,
       gameId: serverId,
     };
-    console.log("Sending:", message);
-    sendMessage(JSON.stringify(message));
+    sendMessage(WebSocketMessageType.SET_GAME, message);
     gameSetRef.current = true;
   }, [serverId, sendMessage]);
-
-  console.log("isConnected: ", connected);
 
   useEffect(() => {
     if (connected && !gameSetRef.current) {
@@ -178,12 +186,10 @@ const Game = () => {
   const callback = (data: any) => {
     dispatch(selectPlayer(data));
     const message = {
-      type: WebSocketMessageType.JOIN_GAME,
       gameId: serverId,
       clientId: data.id,
     };
-    console.log("Joining as new client:", message);
-    sendMessage(JSON.stringify(message));
+    sendMessage(WebSocketMessageType.JOIN_GAME, message);
   };
 
   const getLinkButton = () => {
@@ -218,6 +224,7 @@ const Game = () => {
       <PlayerSection players={server?.players || [mockPlayer, mockPlayer]} />
       {getLinkButton()}
       {getStateGameButton()}
+      <GameStats winners={winners} />
       {openModal && (
         <PlayerCreateModal
           open={openModal}
@@ -226,6 +233,14 @@ const Game = () => {
           callback={callback}
         />
       )}
+      {
+        gameOverDialog && (
+          <GameOverModal
+            winner={isWon}
+            onRestart={() => {setGameOverDialog(false)}}
+          />
+        )
+      }
     </Container>
   );
 };

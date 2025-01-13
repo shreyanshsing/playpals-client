@@ -1,4 +1,5 @@
 export enum WebSocketMessageType {
+    CONNECTED = 'CONNECTED',
     SET_GAME = 'SET_GAME',
     JOIN_GAME = 'JOIN_GAME',
     MOVE = 'MOVE',

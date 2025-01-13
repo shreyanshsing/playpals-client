@@ -13,7 +13,6 @@ const hooksReducer = createSlice({
   initialState: initialState,
   reducers: {
     setWebSocket: (state: IState, action: PayloadAction<WebSocket | null>) => {
-        console.log("Setting WebSocket instance in Redux", action.payload);
       state.ws = action.payload;
     },
   },
